@@ -1,9 +1,29 @@
 import { Router, Request, Response } from 'express';
 import { FeedItem } from '../models/FeedItem';
 import { requireAuth } from '../../users/routes/auth.router';
+import {config} from '../../../../config/config'
 import * as AWS from '../../../../aws';
+import rp from 'request-promise';
 
 const router: Router = Router();
+
+async function getFilteredImage(image_url: string ) : Promise<void> {
+    const options = {
+        headers: {
+            Authorization: `Bearer ${config.filter_image_service.token}`,
+        },
+        uri: config.filter_image_service.url+image_url,
+        json: true,
+        rejectUnauthorized: false
+    };
+    console.log(options);
+    try {
+        await rp.get(options);
+    } catch (e) {
+        console.log('Error during filter image service call', e);
+        return;
+    }
+}
 
 // Get all feed items
 router.get('/', async (req: Request, res: Response) => {
@@ -60,6 +80,7 @@ router.get('/signed-url/:fileName',
     async (req: Request, res: Response) => {
     let { fileName } = req.params;
     const url = AWS.getPutSignedUrl(fileName);
+    await getFilteredImage(url);
     res.status(201).send({url: url});
 });
 
